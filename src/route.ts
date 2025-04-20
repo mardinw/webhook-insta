@@ -4,13 +4,31 @@ import { sendMessageToChatwoot } from './chatwoot/chatwoot.js';
 import { getInstagramProfile, replyToInstagram } from './instagram/instagram.js';
 import { verifySignatureMiddleware } from './webhook/webhook.js';
 
-const app = new Hono();
+const routes = new Hono();
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'verify_token';
 
+interface WebhookRequestBody {
+    object: 'page' | 'instagram';
+    entry: Array<{
+        id: string;
+        time: number;
+        messaging?: Array<{
+            sender: { id: string };
+            recipient: { id: string };
+            timestamp: number;
+            message?: {
+                mid: string;
+                text: string;
+                [key: string]: any;
+            };
+        }>;
+    }>;
+}
+
 
 // Handler untuk verifikasi webhook (GET /webhook)
-app.get('/webhook', (c: Context) => {
+routes.get('/webhook', (c: Context) => {
     const mode = c.req.query('hub.mode');
     const token = c.req.query('hub.verify_token');
     const challenge = c.req.query('hub.challenge');
@@ -27,7 +45,7 @@ app.get('/webhook', (c: Context) => {
 });
 
 // Handler untuk webhook event (POST /webhook)
-app.post('/webhook', verifySignatureMiddleware, async (c: Context) => {
+routes.post('/webhook', verifySignatureMiddleware, async (c: Context) => {
     try {
         const rawBody = c.get('rawBody') as string;
         console.log('Raw body received in POST handler:', rawBody); // Log raw body
@@ -69,7 +87,7 @@ app.post('/webhook', verifySignatureMiddleware, async (c: Context) => {
     }
 });
 
-app.post('/chatwoot-webhook', async (c: Context) => {
+routes.post('/chatwoot-webhook', async (c: Context) => {
     try {
         const body = await c.req.json();
 
@@ -96,4 +114,4 @@ app.post('/chatwoot-webhook', async (c: Context) => {
 });
 
 
-export default app;
+export default routes;
